@@ -1,0 +1,24 @@
+* 1 Thread for Server listening to new connections
+** New client conns are accepted 
+** New 'Client' is created and issued an id
+** Client is sent to a handler on a new thread
+
+* 1 Thread per chatroom 
+** A queue of actions for every thread
+*** Join room
+*** Leave room
+*** Message room
+** Clients interacting with chatroom put 'Actions' in queue
+** When last client leaves thread terminates
+*** a thread termination handler adds 'Remove room' action to Room list handler
+
+* 1 Thread for Server Maintaining a list of chatrooms
+** Chatroom threads interact with 'Room list' through 'actions' similar to the way clients interact with chatrooms
+*** Add room
+*** Delete room
+
+* 1 Thread per client
+** Clients interact with chatrooms as follows:
+*** Looks up desired chatroom in list 
+*** If room exists -> add desired action to chatroom queue
+*** Else           -> do nothing
