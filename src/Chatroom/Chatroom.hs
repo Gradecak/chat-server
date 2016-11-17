@@ -33,7 +33,7 @@ runRoomIO cr = do
       b <- emptyRoom cr
       unless b  (runRoomIO cr)
 
-addToQueue :: Chatroom -> Action -> IO () -- does this need to be a function?
+addToQueue :: Chatroom -> Action -> IO ()
 addToQueue (Chatroom _ _ _ chan) = writeChan chan
 
 --deliver message to all clients in room

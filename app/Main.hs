@@ -22,11 +22,9 @@ main = do
   sok <- initSocket host port -- intialise the server socket
   putStrLn $ "staring server on " ++ host ++ ":" ++ port
   kill <- newEmptyMVar
-  rs <- newMVar []
   li <- newMVar (read n :: Int)
-  ac <-  newMVar []
   let inf = ("IP:10.62.0.104\nPort:"++port++"\nStudentID:13319506\n")
-      ser = Server {info=inf, sock=sok, rooms=rs, stop=kill, limit=li, actions=ac}
+      ser = Server {info=inf, sock=sok, stop=kill, limit=li}
   --_ <- forkIO $ runServer sock  (read n :: Int) ("IP:10.62.0.104\nPort:"++port++"\nStudentID:13319506\n") kill
   _ <- forkIO $ runServer ser
   takeMVar kill

@@ -1,5 +1,5 @@
 module Client ( Client(..),
-                messageClient, setName
+                messageClient, setName, closeClientSock
               )where
 
 import           Control.Monad             (void)
@@ -16,10 +16,8 @@ data Client = Client { name :: String
 messageClient :: ByteString -> Client -> IO()
 messageClient m (Client _ _ s)= void $ NB.send s m
 
-
 setName :: Client -> String -> Client
 setName (Client _ i s) n = Client n i s
 
-
-
-
+closeClientSock :: Client -> IO ()
+closeClientSock cl = close (sock cl)
