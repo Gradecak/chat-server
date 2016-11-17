@@ -2,6 +2,7 @@ module Chatroom.Manager where
 
 import Chatroom
 import Client
+import Control.Concurrent (forkFinally)
 import Control.Concurrent (MVar, takeMVar, putMVar, readMVar, newMVar)
 import Control.Concurrent.Chan (Chan, readChan, newChan, writeChan)
 import Data.List (find)
@@ -29,7 +30,7 @@ addRoom :: Manager -> Chatroom -> IO ()
 addRoom srv r = updateMutex (rooms srv) (r:)
 
 removeRoom :: Manager -> Chatroom -> IO ()
-removeRoom srv r = updateMutex (rooms srv) (\x -> [y | y <- x, y /= r])
+removeRoom mgr r = updateMutex (rooms mgr) (\x -> [y | y <- x, y /= r])
 
 findRoom :: Manager -> (Chatroom -> Bool) -> IO (Maybe Chatroom)
 findRoom (Manager mrs _ _) op = do
@@ -42,6 +43,9 @@ createChatroom n i cl = do
   ch <- newChan
   return $ Chatroom n i cls ch
 
+roomCloseHandler :: Manager -> Chatroom -> IO ()
+roomCloseHandler mgr r = Chatroom.Manager.addToQueue mgr (Remove r)
+
 -- run the room manager
 runManager :: Manager -> Int -> IO ()
 runManager m@(Manager _ actionChan _) i = do
@@ -51,4 +55,5 @@ runManager m@(Manager _ actionChan _) i = do
     (Create n cl) -> do
       room <- createChatroom n i cl
       addRoom m room
+      _ <-forkFinally (runRoom room) (\_ -> roomCloseHandler m room)
       runManager m (i+1)

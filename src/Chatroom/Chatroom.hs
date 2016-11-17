@@ -1,5 +1,5 @@
 module Chatroom ( Action(..), Chatroom(..),
-                 runRoomIO, addToQueue
+                 runRoom, addToQueue
                 )where
 
 --import Network.Socket
@@ -22,16 +22,16 @@ data Chatroom = Chatroom { roomName :: String
                          , action   :: Chan Action  -- a queue of actions for the chatroom
                          } deriving Eq
 
-runRoomIO :: Chatroom -> IO ()
-runRoomIO cr = do
+runRoom :: Chatroom -> IO ()
+runRoom cr = do
   act <- readChan $ action cr
   case act of
-    (Join c) -> addClient cr c >> runRoomIO cr
-    (Message cl msg) -> broadcast cr (BS.pack msg) >> runRoomIO cr --TODO include client in message to room
+    (Join c) -> addClient cr c >> runRoom cr
+    (Message cl msg) -> broadcast cr (BS.pack msg) >> runRoom cr --TODO include client in message to room
     (Leave c) -> do
       removeClient cr c
       b <- emptyRoom cr
-      unless b  (runRoomIO cr)
+      unless b  (runRoom cr)
 
 addToQueue :: Chatroom -> Action -> IO ()
 addToQueue (Chatroom _ _ _ chan) = writeChan chan

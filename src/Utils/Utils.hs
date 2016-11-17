@@ -1,4 +1,4 @@
-module Utils (updateMutex, parseJoinStr, parseLeaveStr) where
+module Utils (updateMutex, parseJoinStr, parseLeaveStr, joinedMessage) where
 
 import Control.Concurrent (MVar, takeMVar, putMVar)
 import Data.List.Split (splitOn)
@@ -16,3 +16,10 @@ parseJoinStr str = (head x, last x)        -- returns (Chat ref, Message)  if ca
 parseLeaveStr :: String -> String -- returns the name of the room to leave
 parseLeaveStr str = head x
   where x = map (last . splitOn ":") $ lines str
+
+joinedMessage :: String -> String ->  Int -> Int -> String
+joinedMessage rName port rId cId = "JOINED_CHATROOM:" ++rName
+                                   ++ "\nSERVER_IP:10.62.0.104"
+                                   ++ "\nPORT:" ++ port
+                                   ++ "\nROOM_REF:" ++show rId
+                                   ++ "\nJOIN_ID:" ++ show cId

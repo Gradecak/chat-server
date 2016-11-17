@@ -3,7 +3,7 @@ module Server where
 import qualified Chatroom                  as Cr
 import qualified Chatroom.Manager          as Cm
 import qualified Client                    as Cl
-import           Control.Concurrent        (forkFinally)
+import           Control.Concurrent        (forkFinally, forkIO)
 import           Control.Concurrent.MVar   (MVar, putMVar, readMVar)
 import           Control.Monad             (unless, void)
 import qualified Data.ByteString           as B
@@ -11,7 +11,7 @@ import           Data.ByteString.Char8     (pack, unpack)
 import           Data.List                 (isInfixOf)
 import qualified Network.Socket            as Net
 import           Network.Socket.ByteString (recv, send)
-import Utils
+import           Utils
 
 data Server = Server { info  :: String
                      , sock  :: Net.Socket
@@ -33,7 +33,9 @@ joinRoom mgr cli msg = do
       namedCli = Cl.setName cli clName --TODO maybe check if name is taken in Chatroom
   maybRoom <- Cm.findRoom mgr ((rName ==). Cr.roomName)
   case maybRoom of
-    (Just r ) -> Cr.addToQueue r (Cr.Join namedCli ) -- TODO add feedback to joining client
+    (Just r ) -> do
+      Cr.addToQueue r (Cr.Join namedCli )
+      Cr.addToQueue r (Cr.Message namedCli (joinedMessage rName "5000" (Cr.roomId r) (Cl.id cli)) )-- TODO add feedback to joining client
     Nothing   -> Cm.addToQueue mgr (Cm.Create rName namedCli) --TODO add feedback to joining client
 
 leaveRoom :: Cm.Manager -> Cl.Client -> String -> IO ()
@@ -55,6 +57,7 @@ action mgr cl msg | "HELO"    `isInfixOf` msg = void $ send (Cl.sock cl) (pack $
 handleClient :: Cm.Manager -> Cl.Client -> IO ()
 handleClient mgr c@(Cl.Client _ _ sck ) = do
   msg <- recv sck 4096
+  print msg
   unless (B.null msg) $ action mgr c (unpack msg) >> handleClient mgr c
 
 clientClose :: MVar Int -> Cl.Client -> IO ()
@@ -66,6 +69,7 @@ runServer :: Server -> IO ()
 runServer (Server _ soc kill lim) = do
   Net.listen soc 3
   manager <- Cm.newManager kill
+  forkIO (Cm.runManager manager 0)
   loop 0 manager -- id of the initial client
   where loop i m = do
           (conn,_) <- Net.accept soc
