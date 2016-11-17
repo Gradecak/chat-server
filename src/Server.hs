@@ -1,64 +1,23 @@
 module Server where
 
 import qualified Chatroom                  as Cr
+import qualified Chatroom.Manager          as Cm
 import qualified Client                    as Cl
-import           Control.Concurrent        (forkFinally, forkIO)
-import           Control.Concurrent.MVar   (MVar, newEmptyMVar, newMVar,
-                                            putMVar, readMVar, takeMVar)
+import           Control.Concurrent        (forkFinally)
+import           Control.Concurrent.MVar   (MVar, putMVar, readMVar, takeMVar)
 import           Control.Monad             (unless, void)
 import qualified Data.ByteString           as B
 import           Data.ByteString.Char8     (pack, unpack)
 import           Data.List                 (find, isInfixOf)
 import qualified Network.Socket            as Net
 import           Network.Socket.ByteString (recv, send)
+import qualified Utils                     as Ut
 
-data Action = Add Cr.Chatroom
-            | Remove Cr.Chatroom
-
-addRoom :: Server -> Cr.Chatroom -> IO ()
-addRoom srv r = updateMutex (rooms srv) (r:)
-
-removeRoom :: Server -> Cr.Chatroom -> IO ()
-removeRoom srv r = updateMutex (rooms srv) (\x -> [y | y <- x, y /= r])
-
-data Server = Server { info    :: String
-                     , sock    :: Net.Socket
-                     , rooms   :: MVar [Cr.Chatroom]
-                     , stop    :: MVar ()
-                     , limit   :: MVar Int
-                     , actions :: MVar [Action]
+data Server = Server { info  :: String
+                     , sock  :: Net.Socket
+                     , stop  :: MVar ()
+                     , limit :: MVar Int
                      }
-
-runRoomsIO :: Server -> IO ()
-runRoomsIO s@(Server _ _ _ _ _ muAct) = do
-  act <- takeMVar muAct
-  if null act then putMVar muAct act
-    else do
-    let x:xs = act -- might fail to pattern match on singleton list [x]
-    putMVar muAct xs
-    case x of
-      (Add c) -> addRoom s c >> runRoomsIO s
-      (Remove c) -> removeRoom s c >> runRoomsIO s
-
--- Some helper functions
-findRoom :: Server -> (Cr.Chatroom -> Bool) -> IO (Maybe Cr.Chatroom)
-findRoom serv op = do
-  rs <- readMVar (rooms serv)
-  return $ find op rs
-
---HOF for updating the contents of a mutex atomically
-updateMutex :: MVar a -> (a -> a) -> IO ()
-updateMutex mv op = do
-  x <- takeMVar mv
-  putMVar mv (op x)
-
-parseJoinStr :: String -> (String, String) -- returns (Chatroom name, Client name)
-parseJoinStr str = (head x, last x)        -- returns (Chat ref, Message)  if called with msg string
-  where x = map (last . words) $ lines str
-
-parseLeaveStr :: String -> String -- returns the name of the room to leave
-parseLeaveStr str = head x
-  where x = map (last . words) $ lines str
 
 messageRoom :: Server -> Cl.Client -> (String, String) -> IO ()
 messageRoom srv cl (rid, msg) = do
@@ -90,6 +49,7 @@ action srv cl msg | "HELO"    `isInfixOf` msg = void $ send (Cl.sock cl) (pack $
                   | "JOIN"    `isInfixOf` msg = joinRoom srv cl msg
                   | "LEAVE"   `isInfixOf` msg = leaveRoom srv cl msg
                   | "MESSAGE" `isInfixOf` msg = return () --TODO
+                  | "KILL_SERVICE" == msg     = putMVar (stop srv) ()
                   | otherwise                 = return () -- do nothing
 
 handleClient :: Server -> Cl.Client -> IO ()
@@ -109,6 +69,6 @@ runServer s@(Server _ soc _ _ lim _) = do
             then Net.close conn >> loop i
             else do
             updateMutex lim (\z -> z-1)
-            let newCli = Cl.Client {Cl.id=i, Cl.sock = conn}
+            let newCli = Cl.Client {Cl.id=i, Cl.sock=conn}
             _ <- forkFinally (handleClient s newCli) (\_ -> print "poo")
-            loop i
+            loop (i+1)

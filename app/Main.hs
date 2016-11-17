@@ -11,17 +11,23 @@ import Server
 initSocket :: String -> String -> IO Net.Socket
 initSocket host port = do
   addr:_ <- Net.getAddrInfo Nothing (Just host) (Just port)
-  sock <- Net.socket (Net.addrFamily addr) Net.Stream  Net.defaultProtocol-- (Net.addrProtocol addr)
-  Net.bind sock (Net.addrAddress addr)
-  return sock
+  so <- Net.socket (Net.addrFamily addr) Net.Stream  Net.defaultProtocol-- (Net.addrProtocol addr)
+  Net.bind so (Net.addrAddress addr)
+  return so
 
 
 main :: IO ()
 main = do
   [host, port, n] <- getArgs
-  sock <- initSocket host port -- intialise the server socket
+  sok <- initSocket host port -- intialise the server socket
   putStrLn $ "staring server on " ++ host ++ ":" ++ port
   kill <- newEmptyMVar
-  _ <- forkIO $ runServer sock  (read n :: Int) ("IP:10.62.0.104\nPort:"++port++"\nStudentID:13319506\n") kill
+  rs <- newMVar []
+  li <- newMVar (read n :: Int)
+  ac <-  newMVar []
+  let inf = ("IP:10.62.0.104\nPort:"++port++"\nStudentID:13319506\n")
+      ser = Server {info=inf, sock=sok, rooms=rs, stop=kill, limit=li, actions=ac}
+  --_ <- forkIO $ runServer sock  (read n :: Int) ("IP:10.62.0.104\nPort:"++port++"\nStudentID:13319506\n") kill
+  _ <- forkIO $ runServer ser
   takeMVar kill
   putStrLn "Terminating Server"

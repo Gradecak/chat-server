@@ -15,7 +15,11 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
+                     , src/Chatroom
+                     , src/Utils
   exposed-modules:     Chatroom
+                     , Chatroom.Manager
+                     , Utils
                      , Client
                      , Server
   build-depends:       base >= 4.7 && < 5
