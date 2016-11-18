@@ -1,6 +1,7 @@
 module Utils (updateMutex, parseJoinStr,
               parseLeaveStr, joinedMessage,
-              roomMessage) where
+              roomMessage, leftRoomMessage
+             ) where
 
 import Control.Concurrent (MVar, takeMVar, putMVar)
 import Data.List.Split (splitOn)
@@ -20,13 +21,17 @@ parseLeaveStr str = head x
   where x = map (last . splitOn ":") $ lines str
 
 joinedMessage :: String -> String ->  Int -> Int -> String
-joinedMessage rName port rId cId = "JOINED_CHATROOM:" ++rName
+joinedMessage rName port rId cId    = "JOINED_CHATROOM:" ++rName
                                    ++ "\nSERVER_IP:10.62.0.104"
                                    ++ "\nPORT:" ++ port
                                    ++ "\nROOM_REF:" ++show rId
                                    ++ "\nJOIN_ID:" ++ show cId
 
 roomMessage :: String -> String -> String -> String
-roomMessage rId cName msg = "CHAT:" ++ rId
+roomMessage rId cName msg    = "CHAT:" ++ rId
                             ++ "CLIENT_NAME:" ++ cName
                             ++ "MESSAGE:" ++ msg
+
+leftRoomMessage :: String -> String -> String
+leftRoomMessage rId cId   = "LEFT_CHATROOM:"++rId
+                          ++"JOIN_ID:"++cId

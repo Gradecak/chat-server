@@ -1,4 +1,4 @@
-module Server where
+module Server (Server(..), runServer)  where
 
 import qualified Chatroom                  as Cr
 import qualified Chatroom.Manager          as Cm
@@ -12,6 +12,7 @@ import           Data.List                 (isInfixOf)
 import qualified Network.Socket            as Net
 import           Network.Socket.ByteString (recv, send)
 import           Utils
+import System.Exit (exitSuccess)
 
 data Server = Server { info  :: String
                      , sock  :: Net.Socket
@@ -47,12 +48,13 @@ leaveRoom mgr cli msg = do
     Nothing   -> return () -- TODO add error feedback
 
 action :: Cm.Manager -> Cl.Client -> String -> IO ()
-action mgr cl msg | "HELO"    `isInfixOf` msg = void $ send (Cl.sock cl) (pack $ msg ++ "poo")
-                  | "JOIN"    `isInfixOf` msg = joinRoom mgr cl msg
-                  | "LEAVE"   `isInfixOf` msg = leaveRoom mgr cl msg
-                  | "MESSAGE" `isInfixOf` msg = return () --TODO implement room messaging
-                  | "KILL_SERVICE"     == msg = putMVar (Cm.kill mgr) ()
-                  | otherwise                 = return () -- do nothing
+action mgr cl msg | "HELO"    `isInfixOf`   msg = void $ send (Cl.sock cl) (pack $ msg ++ "poo")
+                  | "JOIN"    `isInfixOf`   msg = joinRoom mgr cl msg
+                  | "LEAVE"   `isInfixOf`   msg = leaveRoom mgr cl msg
+                  | "MESSAGE" `isInfixOf`   msg = return () --TODO implement room messaging
+                  | "KILL_SERVICE"       == msg = putMVar (Cm.kill mgr) ()
+                  | "DISCONNECT" `isInfixOf`msg = exitSuccess
+                  | otherwise                   = return () -- do nothing
 
 clientHandler :: Cm.Manager -> Cl.Client -> IO ()
 clientHandler mgr c@(Cl.Client _ _ sck ) = do
