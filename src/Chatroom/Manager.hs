@@ -6,7 +6,7 @@ import Control.Concurrent (forkFinally)
 import Control.Concurrent (MVar, takeMVar, putMVar, readMVar, newMVar)
 import Control.Concurrent.Chan (Chan, readChan, newChan, writeChan)
 import Data.List (find)
-import Utils (updateMutex)
+import Utils (updateMutex, joinedMessage)
 
 data Manage = Create String Client -- name of room and first client to add
             | Remove Chatroom
@@ -56,4 +56,6 @@ runManager m@(Manager _ actionChan _) i = do
       room <- createChatroom n i cl
       addRoom m room
       _ <-forkFinally (runRoom room) (\_ -> roomCloseHandler m room)
+      -- notify the joining client that they have succesfully joined
+      Chatroom.addToQueue room (Message cl $ joinedMessage n "5000" (roomId room) (Client.id cl)) 
       runManager m (i+1)

@@ -30,13 +30,13 @@ messageRoom mgr cl (rid, msg) = do
 joinRoom :: Cm.Manager -> Cl.Client -> String -> IO ()
 joinRoom mgr cli msg = do
   let (rName, clName) = parseJoinStr msg
-      namedCli = Cl.setName cli clName --TODO maybe check if name is taken in Chatroom
+      namedCli = Cl.setName cli clName
   maybRoom <- Cm.findRoom mgr ((rName ==). Cr.roomName)
   case maybRoom of
     (Just r ) -> do
       Cr.addToQueue r (Cr.Join namedCli )
-      Cr.addToQueue r (Cr.Message namedCli (joinedMessage rName "5000" (Cr.roomId r) (Cl.id cli)) )-- TODO add feedback to joining client
-    Nothing   -> Cm.addToQueue mgr (Cm.Create rName namedCli) --TODO add feedback to joining client
+      Cr.addToQueue r (Cr.Message namedCli (joinedMessage rName "5000" (Cr.roomId r) (Cl.id cli)) )
+    Nothing   -> Cm.addToQueue mgr (Cm.Create rName namedCli)
 
 leaveRoom :: Cm.Manager -> Cl.Client -> String -> IO ()
 leaveRoom mgr cli msg = do
@@ -54,16 +54,11 @@ action mgr cl msg | "HELO"    `isInfixOf` msg = void $ send (Cl.sock cl) (pack $
                   | "KILL_SERVICE"     == msg = putMVar (Cm.kill mgr) ()
                   | otherwise                 = return () -- do nothing
 
-handleClient :: Cm.Manager -> Cl.Client -> IO ()
-handleClient mgr c@(Cl.Client _ _ sck ) = do
+clientHandler :: Cm.Manager -> Cl.Client -> IO ()
+clientHandler mgr c@(Cl.Client _ _ sck ) = do
   msg <- recv sck 4096
   print msg
-  unless (B.null msg) $ action mgr c (unpack msg) >> handleClient mgr c
-
-clientClose :: MVar Int -> Cl.Client -> IO ()
-clientClose count cl = do
-  Cl.closeClientSock cl
-  updateMutex count (+1)
+  unless (B.null msg) $ action mgr c (unpack msg) >> clientHandler mgr c
 
 runServer :: Server -> IO ()
 runServer (Server _ soc kill lim) = do
@@ -79,5 +74,5 @@ runServer (Server _ soc kill lim) = do
             else do
             updateMutex lim (\z -> z-1)
             let newCli = Cl.Client {Cl.id=i, Cl.sock=conn}
-            _ <- forkFinally (handleClient m newCli) (\_ -> clientClose lim newCli)
+            _ <- forkFinally (clientHandler m newCli) (\_ -> Cl.clientCloseHandler lim newCli)
             loop (i+1) m
