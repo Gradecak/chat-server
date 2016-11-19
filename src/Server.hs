@@ -59,7 +59,7 @@ action inf cl msg q  | "HELO"    `isInfixOf`   msg = void $ send (Cl.sock cl) (p
                      | "LEAVE"   `isInfixOf`   msg = leaveRoom (fst inf) cl msg
                      | "MESSAGE" `isInfixOf`   msg = let (rId, m) = parseMsgStr msg -- return () --TODO implement room messaging
                                                      in messageRoom (fst inf) cl (read rId :: Int) m
-                     | "KILL_SERVICE"       == msg = putMVar (snd inf) ()
+                     | "KILL_SERVICE\n"       == msg = print "shutting down server " >> putMVar (snd inf) ()
                      | "DISCONNECT" `isInfixOf`msg = exitSuccess
                      | otherwise                   = return () -- do nothing
 
