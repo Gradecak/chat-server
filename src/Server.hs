@@ -42,7 +42,7 @@ leaveRoom :: TVar [Cr.Chatroom] -> Cl.Client -> Int -> IO()
 leaveRoom tRs client rId = do
   maybRoom <- Cr.findRoom tRs (\x -> Cr.roomId x == rId)
   case maybRoom of
-    (Just r) -> Cr.removeClient r client >> Cr.broadcast r (Cr.Leave client)
+    (Just r) -> Cr.broadcast r (Cr.Leave client) >> Cr.removeClient r client
     Nothing  -> return ()
 
 messageRoom :: TVar [Cr.Chatroom] -> Cl.Client -> Int -> String -> IO()
