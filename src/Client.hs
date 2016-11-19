@@ -7,7 +7,7 @@ import           Control.Monad             (void)
 import           Data.ByteString
 import           Network.Socket
 import           Network.Socket.ByteString as NB (send)
-import           Utils                     (updateMutex)
+import           Utils                     (updateMutex, Message(..))
 
 data Client = Client { name :: String
                      , id   :: Int

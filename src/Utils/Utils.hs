@@ -1,10 +1,15 @@
-module Utils (updateMutex, parseJoinStr,
+module Utils (Message(..), updateMutex, parseJoinStr,
               parseLeaveStr, joinedMessage, parseMsgStr,
               roomMessage, leftRoomMessage
              ) where
 
 import Control.Concurrent (MVar, takeMVar, putMVar)
 import Data.List.Split (splitOn)
+
+data Message a = Join a
+               | Leave a
+               | Message a String
+               deriving Show
 
 --HOF for updating the contents of a mutex atomically
 updateMutex :: MVar a -> (a -> a) -> IO ()

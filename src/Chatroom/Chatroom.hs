@@ -1,4 +1,4 @@
-module Chatroom (Chatroom(..), Broadcast(..),
+module Chatroom (Chatroom(..),
                  broadcast, addClient, removeClient, findRoom,
                  newRoom, nextId
                 )where
@@ -10,12 +10,7 @@ import           Control.Monad.STM
 import qualified Data.ByteString             as B
 import qualified Data.ByteString.Char8       as BS
 import           Data.List                   (delete, find)
-import Utils (joinedMessage, roomMessage, leftRoomMessage)
-
-data Broadcast = Join Client
-               | Leave Client
-               | Message Client String
-               deriving Show
+import Utils (Message(..), joinedMessage, roomMessage, leftRoomMessage)
 
 data Chatroom = Chatroom { roomName :: String
                          , roomId   :: Int
@@ -23,7 +18,7 @@ data Chatroom = Chatroom { roomName :: String
                          } deriving Eq
 
 --deliver message to all clients in room
-broadcast :: Chatroom -> Broadcast -> IO () -- TODO take in client that sends message so that we know who sent it
+broadcast :: Chatroom -> Message Client -> IO () -- TODO take in client that sends message so that we know who sent it
 broadcast (Chatroom n rId cls) broadType = do
   cli <- atomically (readTVar cls)--readMVar (clients room)
   let msg = case broadType of
