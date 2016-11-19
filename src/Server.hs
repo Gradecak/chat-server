@@ -40,6 +40,7 @@ joinRoom tRs client name = do
 
 leaveRoom :: TVar [Cr.Chatroom] -> Cl.Client -> Int -> IO()
 leaveRoom tRs client rId = do
+  print $ "leaving room" ++ (show rId)
   maybRoom <- Cr.findRoom tRs (\x -> Cr.roomId x == rId)
   case maybRoom of
     (Just r) -> Cr.broadcast r (Leave client) >> Cr.removeClient r client
@@ -54,7 +55,7 @@ messageRoom tRs client rId msg = do
 
 action ::(TVar [Cr.Chatroom],MVar ()) -> Cl.Client -> String -> String -> IO ()
 action inf cl msg q  | "HELO"    `isInfixOf`   msg = void $ send (Cl.sock cl) (pack $ msg ++ q)
-                     | "LEAVE"   `isInfixOf`   msg = leaveRoom (fst inf) cl $ (read $ parseLeaveStr msg :: Int)
+                     | "LEAVE"   `isInfixOf`   msg = leaveRoom (fst inf) cl (read $ parseLeaveStr msg :: Int)
                      | "JOIN"    `isInfixOf`   msg =  let (rName,name) = parseJoinStr msg
                                                           client = Cl.setName cl name
                                                       in joinRoom (fst inf) client rName
