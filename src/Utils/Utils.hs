@@ -29,7 +29,7 @@ joinedMessage rName port rId cId    = "JOINED_CHATROOM:" ++rName
                                    ++ "\nSERVER_IP:10.62.0.104"
                                    ++ "\nPORT:" ++ port
                                    ++ "\nROOM_REF:" ++show rId
-                                   ++ "\nJOIN_ID:" ++ show cId
+                                   ++ "\nJOIN_ID:" ++ show cId ++ "\n"
 
 roomMessage :: Int -> String -> String -> String
 roomMessage rId cName msg    = "CHAT:" ++ show rId

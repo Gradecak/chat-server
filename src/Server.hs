@@ -51,26 +51,26 @@ messageRoom tRs client rId msg = do
     (Just r) -> Cr.broadcast r (Cr.Message client msg)
     Nothing -> return ()
 
-action ::(TVar [Cr.Chatroom],MVar ()) -> Cl.Client -> String -> IO ()
-action inf cl msg | "HELO"    `isInfixOf`   msg = void $ send (Cl.sock cl) (pack $ msg ++ "poo")
-                  | "JOIN"    `isInfixOf`   msg =  let (rName,name) = parseJoinStr msg
-                                                       client = Cl.setName cl name
-                                                   in joinRoom (fst inf) client rName
-                  | "LEAVE"   `isInfixOf`   msg = leaveRoom (fst inf) cl msg
-                  | "MESSAGE" `isInfixOf`   msg = let (rId, m) = parseMsgStr msg -- return () --TODO implement room messaging
-                                                  in messageRoom (fst inf) cl (read rId :: Int) m
-                  | "KILL_SERVICE"       == msg = putMVar (snd inf) ()
-                  | "DISCONNECT" `isInfixOf`msg = exitSuccess
-                  | otherwise                   = return () -- do nothing
+action ::(TVar [Cr.Chatroom],MVar ()) -> Cl.Client -> String -> String -> IO ()
+action inf cl msg q  | "HELO"    `isInfixOf`   msg = void $ send (Cl.sock cl) (pack $ msg ++ q)
+                     | "JOIN"    `isInfixOf`   msg =  let (rName,name) = parseJoinStr msg
+                                                          client = Cl.setName cl name
+                                                      in joinRoom (fst inf) client rName
+                     | "LEAVE"   `isInfixOf`   msg = leaveRoom (fst inf) cl msg
+                     | "MESSAGE" `isInfixOf`   msg = let (rId, m) = parseMsgStr msg -- return () --TODO implement room messaging
+                                                     in messageRoom (fst inf) cl (read rId :: Int) m
+                     | "KILL_SERVICE"       == msg = putMVar (snd inf) ()
+                     | "DISCONNECT" `isInfixOf`msg = exitSuccess
+                     | otherwise                   = return () -- do nothing
 
-clientHandler :: (TVar [Cr.Chatroom],MVar ()) -> Cl.Client -> IO ()
-clientHandler mRooms c@(Cl.Client _ _ sck ) = do
+clientHandler :: (TVar [Cr.Chatroom],MVar ()) -> Cl.Client -> String -> IO ()
+clientHandler mRooms c@(Cl.Client _ _ sck ) inf= do
   msg <- recv sck 4096
   print msg
-  unless (B.null msg) $ action mRooms c (unpack msg) >> clientHandler mRooms c
+  unless (B.null msg) $ action mRooms c (unpack msg) inf >> clientHandler mRooms c inf
 
 runServer :: Server -> IO ()
-runServer (Server _ soc rs kill lim) = do
+runServer (Server inf soc rs kill lim) = do
   Net.listen soc 3
   loop 0 -- id of the initial client
   where loop i = do
@@ -81,5 +81,5 @@ runServer (Server _ soc rs kill lim) = do
             else do
             updateMutex lim (\z -> z-1)
             let newCli = Cl.Client {Cl.id=i, Cl.sock=conn}
-            _ <- forkFinally (clientHandler (rs,kill) newCli) (\_ -> Cl.clientCloseHandler lim newCli)
+            _ <- forkFinally (clientHandler (rs,kill) newCli inf) (\_ -> Cl.clientCloseHandler lim newCli)
             loop (i+1)
