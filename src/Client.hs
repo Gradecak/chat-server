@@ -12,7 +12,7 @@ import           Utils                     (updateMutex)
 data Client = Client { name :: String
                      , id   :: Int
                      , sock :: Socket
-                     } deriving Eq
+                     } deriving (Eq, Show)
 
 -- send a message to the client
 messageClient :: ByteString -> Client -> IO()

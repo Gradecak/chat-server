@@ -18,7 +18,6 @@ library
                      , src/Chatroom
                      , src/Utils
   exposed-modules:     Chatroom
-                     , Chatroom.Manager
                      , Utils
                      , Client
                      , Server
@@ -26,6 +25,7 @@ library
                      , network
                      , bytestring >= 0.10
                      , split
+                     , stm
   default-language:    Haskell2010
 
 executable chatServer-exe
@@ -36,6 +36,7 @@ executable chatServer-exe
                      , chatServer
                      , network
                      , bytestring >= 0.10
+                     , stm
   default-language:    Haskell2010
 
 test-suite chatServer-test

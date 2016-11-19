@@ -4,6 +4,7 @@ import qualified Network.Socket as Net
 import           Control.Concurrent        (forkFinally, forkIO)
 import           Control.Concurrent.MVar   (MVar, newEmptyMVar, newMVar,
                                                                                         putMVar, takeMVar)
+import           Control.Concurrent.STM.TVar
 import           System.Environment        (getArgs)
 import Server
 
@@ -23,8 +24,9 @@ main = do
   putStrLn $ "staring server on " ++ host ++ ":" ++ port
   kill <- newEmptyMVar
   li <- newMVar (read n :: Int)
+  rms <- newTVarIO []
   let inf = ("IP:10.62.0.104\nPort:"++port++"\nStudentID:13319506\n")
-      ser = Server {info=inf, sock=sok, stop=kill, limit=li}
+      ser = Server {info=inf, sock=sok, rooms=rms, stop=kill, limit=li}
   --_ <- forkIO $ runServer sock  (read n :: Int) ("IP:10.62.0.104\nPort:"++port++"\nStudentID:13319506\n") kill
   _ <- forkIO $ runServer ser
   takeMVar kill

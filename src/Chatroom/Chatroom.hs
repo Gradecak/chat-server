@@ -1,61 +1,70 @@
-module Chatroom ( Action(..), Chatroom(..),
-                 runRoom, addToQueue
+module Chatroom (Chatroom(..), Broadcast(..),
+                 broadcast, addClient, removeClient, findRoom,
+                 newRoom, nextId
                 )where
 
 --import Network.Socket
 import           Client
-import           Control.Concurrent.Chan (Chan, readChan, writeChan)
-import           Control.Concurrent.MVar (MVar, readMVar)
-import           Control.Monad           (unless)
-import qualified Data.ByteString         as B
-import qualified Data.ByteString.Char8   as BS
-import           Data.List               (delete)
-import           Utils                   (updateMutex)
+import           Control.Concurrent.STM.TVar
+import           Control.Monad.STM
+import qualified Data.ByteString             as B
+import qualified Data.ByteString.Char8       as BS
+import           Data.List                   (delete, find)
+import Utils (joinedMessage, roomMessage, leftRoomMessage)
 
-data Action = Join Client
-            | Leave Client
-            | Message Client String
+data Broadcast = Join Client
+               | Leave Client
+               | Message Client String
+               deriving Show
 
 data Chatroom = Chatroom { roomName :: String
                          , roomId   :: Int
-                         , clients  :: MVar [Client]
-                         , action   :: Chan Action  -- a queue of actions for the chatroom
+                         , clients  :: TVar [Client]
                          } deriving Eq
 
-runRoom :: Chatroom -> IO ()
-runRoom cr = do
-  act <- readChan $ action cr
-  case act of
-    (Join c) -> addClient cr c >> runRoom cr
-    (Message cl msg) -> broadcast cr (BS.pack msg) >> runRoom cr --TODO include client in message to room
-    (Leave c) -> do
-      removeClient cr c
-      b <- emptyRoom cr
-      unless b  (runRoom cr)
-
-addToQueue :: Chatroom -> Action -> IO ()
-addToQueue (Chatroom _ _ _ chan) = writeChan chan
-
 --deliver message to all clients in room
-broadcast :: Chatroom -> B.ByteString -> IO () -- TODO take in client that sends message so that we know who sent it
-broadcast room msg = do
-  cli <- readMVar (clients room)
-  mapM_ (messageClient msg) cli
+broadcast :: Chatroom -> Broadcast -> IO () -- TODO take in client that sends message so that we know who sent it
+broadcast (Chatroom n rId cls) broadType = do
+  cli <- atomically (readTVar cls)--readMVar (clients room)
+  let msg = case broadType of
+        (Join c) -> joinedMessage n "5000" rId (Client.id c)
+        (Leave c) -> leftRoomMessage rId (Client.id c)
+        (Message c s) -> roomMessage rId (name c) s
+  mapM_ (messageClient $ BS.pack msg) cli --map message client over list of clients
 
 --add a client to the chatroom
-addClient :: Chatroom -> Client -> IO ()
-addClient (Chatroom _ _ cl _) nc = updateMutex cl (nc:)
+addClient :: Chatroom -> Client -> STM ()
+addClient (Chatroom _ _ cls) nc = do
+  cl <- readTVar cls
+  writeTVar cls (nc:cl)
 
 --remove a client by an id
 removeClient :: Chatroom -> Client -> IO ()
-removeClient (Chatroom _ _  cl _) c = updateMutex cl (delete c)
+removeClient (Chatroom _ _  cls) c = atomically $ do
+  cl <- readTVar cls
+  writeTVar cls (delete c cl)
+  --updateMutex cl (delete c)
+
+newRoom :: String -> Int -> STM Chatroom
+newRoom rName rId = do
+  clie <- newTVar []
+  return $ Chatroom rName rId clie
+
+nextId :: [Chatroom] -> Int
+nextId [] = 0
+nextId rs = roomId (head rs) + 1
+
+findRoom :: TVar [Chatroom] -> (Chatroom -> Bool) -> IO (Maybe Chatroom)
+findRoom rooms op  =  do
+  rs <- atomically $ readTVar rooms
+  return $ find op rs
 
 -- returns true if a client is in a chatroom
 existsClient :: Chatroom -> Int -> IO Bool
-existsClient (Chatroom _ _ cs _) cid = do
-  clis <- readMVar cs
-  return $ any (\x -> Client.id x == cid) clis
+existsClient (Chatroom _ _ cls) cid = do
+  cl <- atomically $ readTVar cls
+  return $ any (\x -> Client.id x == cid) cl
 
 --check if room has any clients in it
 emptyRoom :: Chatroom -> IO Bool
-emptyRoom (Chatroom _ _ c _) = fmap null (readMVar c) --readMVar c >>= return . null
+emptyRoom (Chatroom _ _ c) = fmap null (atomically $ readTVar c) --readMVar c >>= return . null

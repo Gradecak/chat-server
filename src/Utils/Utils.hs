@@ -1,5 +1,5 @@
 module Utils (updateMutex, parseJoinStr,
-              parseLeaveStr, joinedMessage,
+              parseLeaveStr, joinedMessage, parseMsgStr,
               roomMessage, leftRoomMessage
              ) where
 
@@ -13,7 +13,11 @@ updateMutex mv op = do
   putMVar mv (op x)
 
 parseJoinStr :: String -> (String, String) -- returns (Chatroom name, Client name)
-parseJoinStr str = (head x, last x)        -- returns (Chat ref, Message)  if called with msg string
+parseJoinStr str = (head x, last x)
+  where x = map (last . splitOn ":") $ lines str
+
+parseMsgStr :: String -> (String, String)
+parseMsgStr str = (head x , x !! (-2))
   where x = map (last . splitOn ":") $ lines str
 
 parseLeaveStr :: String -> String -- returns the name of the room to leave
@@ -27,11 +31,11 @@ joinedMessage rName port rId cId    = "JOINED_CHATROOM:" ++rName
                                    ++ "\nROOM_REF:" ++show rId
                                    ++ "\nJOIN_ID:" ++ show cId
 
-roomMessage :: String -> String -> String -> String
-roomMessage rId cName msg    = "CHAT:" ++ rId
+roomMessage :: Int -> String -> String -> String
+roomMessage rId cName msg    = "CHAT:" ++ show rId
                             ++ "CLIENT_NAME:" ++ cName
                             ++ "MESSAGE:" ++ msg
 
-leftRoomMessage :: String -> String -> String
-leftRoomMessage rId cId   = "LEFT_CHATROOM:"++rId
-                          ++"JOIN_ID:"++cId
+leftRoomMessage :: Int -> Int -> String
+leftRoomMessage rId cId   = "LEFT_CHATROOM:"++ show rId
+                          ++"JOIN_ID:"++ show cId
