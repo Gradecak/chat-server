@@ -35,7 +35,7 @@ joinRoom tRs client name = do
         writeTVar tRs $ nRoom:rs
         return nRoom
       Cr.broadcast newR (Cr.Join client)
-      Cr.broadcast newR (Cr.Message client (Cl.name client ++ " has joined chatroom."))
+      Cr.broadcast newR (Cr.Message client (Cl.name client ++ " has joined this chatroom."))
       print $ " joined room " ++ (Cr.roomName newR)
 
 leaveRoom :: TVar [Cr.Chatroom] -> Cl.Client -> String -> IO()
