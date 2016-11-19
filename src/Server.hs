@@ -35,6 +35,7 @@ joinRoom tRs client name = do
         writeTVar tRs $ nRoom:rs
         return nRoom
       Cr.broadcast newR (Cr.Join client)
+      Cr.broadcast newR (Cr.Message client (Cl.name client ++ " has joined chatroom."))
       print $ " joined room " ++ (Cr.roomName newR)
 
 leaveRoom :: TVar [Cr.Chatroom] -> Cl.Client -> String -> IO()
@@ -53,10 +54,10 @@ messageRoom tRs client rId msg = do
 
 action ::(TVar [Cr.Chatroom],MVar ()) -> Cl.Client -> String -> String -> IO ()
 action inf cl msg q  | "HELO"    `isInfixOf`   msg = void $ send (Cl.sock cl) (pack $ msg ++ q)
+                     | "LEAVE"   `isInfixOf`   msg = leaveRoom (fst inf) cl $ parseLeaveStr msg
                      | "JOIN"    `isInfixOf`   msg =  let (rName,name) = parseJoinStr msg
                                                           client = Cl.setName cl name
                                                       in joinRoom (fst inf) client rName
-                     | "LEAVE"   `isInfixOf`   msg = leaveRoom (fst inf) cl msg
                      | "MESSAGE" `isInfixOf`   msg = let (rId, m) = parseMsgStr msg -- return () --TODO implement room messaging
                                                      in messageRoom (fst inf) cl (read rId :: Int) m
                      | "KILL_SERVICE\n"       == msg = print "shutting down server " >> putMVar (snd inf) ()

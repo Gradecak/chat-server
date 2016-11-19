@@ -33,9 +33,9 @@ joinedMessage rName port rId cId    = "JOINED_CHATROOM:" ++rName
 
 roomMessage :: Int -> String -> String -> String
 roomMessage rId cName msg    = "CHAT:" ++ show rId
-                            ++ "CLIENT_NAME:" ++ cName
-                            ++ "MESSAGE:" ++ msg
+                            ++ "\nCLIENT_NAME:" ++ cName
+                            ++ "\nMESSAGE:" ++ msg ++ "\n\n"
 
 leftRoomMessage :: Int -> Int -> String
 leftRoomMessage rId cId   = "LEFT_CHATROOM:"++ show rId
-                          ++"JOIN_ID:"++ show cId
+                          ++"\nJOIN_ID:"++ show cId
