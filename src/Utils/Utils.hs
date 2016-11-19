@@ -22,7 +22,7 @@ parseMsgStr str = (head x , x !! (-2))
 
 parseLeaveStr :: String -> String -- returns the name of the room to leave
 parseLeaveStr str = head x
-  where x = map (last . splitOn ":") $ lines str
+  where x = map (last . words) $ lines str
 
 joinedMessage :: String -> String ->  Int -> Int -> String
 joinedMessage rName port rId cId    = "JOINED_CHATROOM:" ++rName
