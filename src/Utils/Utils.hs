@@ -38,4 +38,4 @@ roomMessage rId cName msg    = "CHAT:" ++ show rId
 
 leftRoomMessage :: Int -> Int -> String
 leftRoomMessage rId cId   = "LEFT_CHATROOM:"++ show rId
-                          ++"\nJOIN_ID:"++ show cId
+                          ++"\nJOIN_ID:"++ show cId ++ "\n"
