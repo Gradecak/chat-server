@@ -1,12 +1,11 @@
 module Server (Server(..), runServer)  where
 
-import Chatroom
-import Client                      as Cl
+import           Chatroom
+import           Client                      as Cl
 import           Control.Concurrent          (forkFinally)
 import           Control.Concurrent.MVar     (MVar, putMVar, readMVar)
 import           Control.Concurrent.STM.TVar
 import           Control.Monad               (unless, void)
-import           Control.Monad.STM
 import qualified Data.ByteString             as B
 import           Data.ByteString.Char8       (pack, unpack)
 import           Data.List                   (isInfixOf)
@@ -15,27 +14,25 @@ import           Network.Socket.ByteString   (recv, send)
 import           System.Exit                 (exitSuccess)
 import           Utils
 
-data Server = Server { info  :: String
-                     , sock  :: Net.Socket
-                     , rooms :: TVar [Chatroom]
-                     , stop  :: MVar ()
-                     , limit :: MVar Int
+data Server = Server { info      :: String
+                     , sock      :: Net.Socket
+                     , roomsList :: TVar [Chatroom]
+                     , stop      :: MVar ()
+                     , limit     :: MVar Int
                      }
 
 joinRoom :: TVar [Chatroom] -> Client -> String -> IO ()
 joinRoom tRs client rName = do
-  room <- findRoom tRs (\x -> roomName x == rName)
-  case room of
-    (Just r) -> print "adding to existing room" >> notifyClient r (Join client) >> addClient r client
+  maybRoom <- findRoom tRs (\x -> roomName x == rName)
+  case maybRoom of
+    (Just r) -> notifyClient r (Join client) >> addClient r client
     Nothing -> do
       newR <- newRoom tRs rName
       notifyClient newR (Join client)
       addClient newR client
-      print $ " joined room " ++ roomName newR
 
 leaveRoom :: TVar [Chatroom] -> Client -> Int -> IO()
 leaveRoom tRs client rId = do
-  print $ "leaving room" ++ show rId
   maybRoom <- findRoom tRs (\x -> roomId x == rId)
   case maybRoom of
     (Just r) -> notifyClient r (Leave client) >> removeClient r client
@@ -46,22 +43,25 @@ messageRoom tRs client rId msg = do
   maybRoom <- findRoom tRs (\x -> roomId x == rId)
   case maybRoom of
     (Just r) -> broadcast r (Message client msg)
-    Nothing -> return ()
+    Nothing  -> return ()
 
 action ::(TVar [Chatroom],MVar ()) -> Client -> String -> String -> IO ()
-action inf cl msg q  | "HELO"    `isInfixOf`   msg = void $ send (Cl.sock cl) (pack $ msg ++ q)
-                     | "LEAVE"   `isInfixOf`   msg = let (rId,cName) = parseLeaveStr msg
-                                                     in leaveRoom (fst inf) (setName cl cName) (read rId :: Int)
+action (rooms, kill) cl msg inf  | "HELO"    `isInfixOf`   msg = void $ send (Cl.sock cl) (pack $ msg ++ inf)
+                                 | "MESSAGE" `isInfixOf`   msg = messageAction rooms cl $ parseMsgStr msg -- let (rId, m) = parseMsgStr msg -- return () --TODO implement room messaging
+                                 | "LEAVE"   `isInfixOf`   msg = leaveAction rooms cl $ parseLeaveStr msg
+                                 | "JOIN"    `isInfixOf`   msg = joinAction rooms cl $ parseJoinStr msg
+                                 | "KILL_SERVICE\n"     == msg = print "shutting down server..." >> putMVar kill ()
+                                 | "DISCONNECT" `isInfixOf`msg = exitSuccess
+                                 | otherwise                   = return () -- do nothing
 
-                     | "JOIN"    `isInfixOf`   msg =  let (rName,cName) = parseJoinStr msg
-                                                          client = setName cl cName
-                                                      in joinRoom (fst inf) client rName
+joinAction :: TVar [Chatroom] -> Client -> (String,String) -> IO ()
+joinAction rooms client (rName,cName) = joinRoom rooms client{name=cName} rName
 
-                     | "MESSAGE" `isInfixOf`   msg = let (rId, m) = parseMsgStr msg -- return () --TODO implement room messaging
-                                                     in messageRoom (fst inf) cl (read rId :: Int) m
-                     | "KILL_SERVICE\n"       == msg = print "shutting down server " >> putMVar (snd inf) ()
-                     | "DISCONNECT" `isInfixOf`msg = exitSuccess
-                     | otherwise                   = return () -- do nothing
+leaveAction :: TVar [Chatroom] -> Client -> (String,String) -> IO()
+leaveAction rooms client (rId, cName) = leaveRoom rooms client{name=cName} (read rId :: Int)
+
+messageAction :: TVar [Chatroom] -> Client -> (String,String,String) -> IO ()
+messageAction rooms client (rId, msg, cName) = messageRoom rooms client{name=cName} (read rId :: Int) msg
 
 clientHandler :: (TVar [Chatroom],MVar ()) -> Client -> String -> IO ()
 clientHandler mRooms c@(Client _ _ sck ) inf= do
@@ -80,6 +80,6 @@ runServer (Server inf soc rs kill lim) = do
             then Net.close conn >> loop i
             else do
             updateMutex lim (\z -> z-1)
-            let newCli = Client {clientId=i, Cl.sock=conn, name="t"}
+            let newCli = Client {clientId=i, Cl.sock=conn, name="<TEMP>"}
             _ <- forkFinally (clientHandler (rs,kill) newCli inf) (\_ -> clientCloseHandler lim newCli)
             loop (i+1)

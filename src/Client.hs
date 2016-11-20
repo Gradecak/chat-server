@@ -1,14 +1,14 @@
 module Client ( Client(..),
-                messageClient, setName, closeClientSock, clientCloseHandler
+                messageClient, closeClientSock, clientCloseHandler
               )where
 
 import           Control.Concurrent.MVar   (MVar)
-import           Control.Monad             (void) 
+import           Control.Monad             (void)
 
 import           Data.ByteString
 import           Network.Socket
 import           Network.Socket.ByteString as NB (send)
-import           Utils                     (updateMutex, joinedMsg, leaveMsg)
+import           Utils                     (updateMutex)
 
 data Client = Client { name :: String
                      , clientId   :: Int
@@ -18,9 +18,6 @@ data Client = Client { name :: String
 -- send a message to the client
 messageClient :: ByteString -> Client -> IO()
 messageClient m (Client _ _ s)= void $ NB.send s m
-
-setName :: Client -> String -> Client
-setName (Client _ i s) n = Client n i s
 
 closeClientSock :: Client -> IO ()
 closeClientSock cl = close (sock cl)
