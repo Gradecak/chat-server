@@ -27,8 +27,10 @@ data Chatroom = Chatroom { roomName :: String
 --deliver message to all clients in room
 broadcast :: Chatroom -> Message -> IO () -- TODO take in client that sends message so that we know who sent it
 broadcast (Chatroom _ rId cls) (Message c s) = do
+  print $ (show c) ++ s
   cli <- atomically (readTVar cls)
   let msg = roomMsg rId (name c) s
+  print ("sending message " ++ msg)
   mapM_ (messageClient $ BS.pack msg) cli --map message client over list of clients
 
 
@@ -50,15 +52,16 @@ addClient r@(Chatroom _ _ cls) nc = do
 --remove a client by an id
 removeClient :: Chatroom -> Client -> IO ()
 removeClient r@(Chatroom _ _  cls) c = do
+  broadcast r (Message c (name c ++ " has left this chatroom."))
   atomically $ do
     cl <- readTVar cls
     writeTVar cls (delete c cl)
-  broadcast r (Message c (name c ++ " has left this chatroom."))
 
-newRoom ::TVar [Chatroom] -> String -> Client -> IO Chatroom
-newRoom rs rName cl = atomically $ do
+
+newRoom ::TVar [Chatroom] -> String -> IO Chatroom
+newRoom rs rName = atomically $ do
   rooms <- readTVar rs
-  rClients <- newTVar [cl]
+  rClients <- newTVar []
   let nRoom = Chatroom rName (nextId rooms) rClients
   writeTVar rs (nRoom:rooms)
   return nRoom

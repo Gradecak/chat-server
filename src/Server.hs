@@ -26,10 +26,11 @@ joinRoom :: TVar [Chatroom] -> Client -> String -> IO ()
 joinRoom tRs client rName = do
   room <- findRoom tRs (\x -> roomName x == rName)
   case room of
-    (Just r) -> addClient r client >> notifyClient r (Join client)
+    (Just r) -> print "adding to existing room" >> notifyClient r (Join client) >> addClient r client
     Nothing -> do
-      newR <- newRoom tRs rName client
+      newR <- newRoom tRs rName
       notifyClient newR (Join client)
+      addClient newR client
       print $ " joined room " ++ roomName newR
 
 leaveRoom :: TVar [Chatroom] -> Client -> Int -> IO()
