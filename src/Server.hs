@@ -30,7 +30,6 @@ joinRoom tRs client rName = do
     Nothing -> do
       newR <- newRoom tRs rName client
       notifyClient newR (Join client)
-      broadcast newR (Message client (name client ++ " has joined this chatroom."))
       print $ " joined room " ++ roomName newR
 
 leaveRoom :: TVar [Chatroom] -> Client -> Int -> IO()
@@ -38,7 +37,7 @@ leaveRoom tRs client rId = do
   print $ "leaving room" ++ show rId
   maybRoom <- findRoom tRs (\x -> roomId x == rId)
   case maybRoom of
-    (Just r) -> notifyClient r (Leave client)
+    (Just r) -> notifyClient r (Leave client) >> removeClient r client
     Nothing  -> return ()
 
 messageRoom :: TVar [Chatroom] -> Client -> Int -> String -> IO()
@@ -50,10 +49,13 @@ messageRoom tRs client rId msg = do
 
 action ::(TVar [Chatroom],MVar ()) -> Client -> String -> String -> IO ()
 action inf cl msg q  | "HELO"    `isInfixOf`   msg = void $ send (Cl.sock cl) (pack $ msg ++ q)
-                     | "LEAVE"   `isInfixOf`   msg = leaveRoom (fst inf) cl (read $ parseLeaveStr msg :: Int)
-                     | "JOIN"    `isInfixOf`   msg =  let (rName,name) = parseJoinStr msg
-                                                          client = setName cl name
+                     | "LEAVE"   `isInfixOf`   msg = let (rId,cName) = parseLeaveStr msg
+                                                     in leaveRoom (fst inf) (setName cl cName) (read rId :: Int)
+
+                     | "JOIN"    `isInfixOf`   msg =  let (rName,cName) = parseJoinStr msg
+                                                          client = setName cl cName
                                                       in joinRoom (fst inf) client rName
+
                      | "MESSAGE" `isInfixOf`   msg = let (rId, m) = parseMsgStr msg -- return () --TODO implement room messaging
                                                      in messageRoom (fst inf) cl (read rId :: Int) m
                      | "KILL_SERVICE\n"       == msg = print "shutting down server " >> putMVar (snd inf) ()

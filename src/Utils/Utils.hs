@@ -16,13 +16,11 @@ parseJoinStr :: String -> (String, String) -- returns (Chatroom name, Client nam
 parseJoinStr str = (head x, last x)
   where x = map (last . splitOn ":") $ lines str
 
+parseLeaveStr = parseJoinStr
+
 parseMsgStr :: String -> (String, String)
 parseMsgStr str = (head x , x !! (-2))
   where x = map (last . splitOn ":") $ lines str
-
-parseLeaveStr :: String -> String -- returns the name of the room to leave
-parseLeaveStr str = head x
-  where x = map (last . words) $ lines str
 
 joinedMsg :: String -> String ->  Int -> Int -> String
 joinedMsg rName port rId cId    = "JOINED_CHATROOM:" ++rName

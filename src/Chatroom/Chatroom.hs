@@ -39,17 +39,21 @@ notifyClient (Chatroom n rId _) ctrl = do
         (Leave c) -> leaveMsg rId (clientId c)
   messageClient (BS.pack msg) (getCl ctrl)
 
---add a client to the chatroom
+--atomically add a clien to list of rooms and notify room of new client
 addClient :: Chatroom -> Client -> IO ()
-addClient (Chatroom _ _ cls) nc = atomically $ do
-  cl <- readTVar cls
-  writeTVar cls (nc:cl)
+addClient r@(Chatroom _ _ cls) nc = do
+  atomically $ do
+    cl <- readTVar cls
+    writeTVar cls (nc:cl)
+  broadcast r (Message nc (name nc ++ " has joined this chatroom."))
 
 --remove a client by an id
 removeClient :: Chatroom -> Client -> IO ()
-removeClient (Chatroom _ _  cls) c = atomically $ do
-  cl <- readTVar cls
-  writeTVar cls (delete c cl)
+removeClient r@(Chatroom _ _  cls) c = do
+  atomically $ do
+    cl <- readTVar cls
+    writeTVar cls (delete c cl)
+  broadcast r (Message c (name c ++ " has left this chatroom."))
 
 newRoom ::TVar [Chatroom] -> String -> Client -> IO Chatroom
 newRoom rs rName cl = atomically $ do
