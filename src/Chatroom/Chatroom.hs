@@ -1,16 +1,23 @@
-module Chatroom (Chatroom(..),
+module Chatroom (Chatroom(..), Message(..), ControlMsg(..),
                  broadcast, addClient, removeClient, findRoom,
-                 newRoom, nextId
+                 newRoom, nextId, notifyClient
                 )where
 
 --import Network.Socket
 import           Client
 import           Control.Concurrent.STM.TVar
 import           Control.Monad.STM
-import qualified Data.ByteString             as B
+--import qualified Data.ByteString             as B
 import qualified Data.ByteString.Char8       as BS
 import           Data.List                   (delete, find)
-import Utils (Message(..), joinedMessage, roomMessage, leftRoomMessage)
+import Utils (joinedMsg, roomMsg, leaveMsg)
+
+data Message = Message Client String
+               deriving Show
+
+data ControlMsg = Join  {getCl :: Client}
+                | Leave {getCl :: Client}
+                  deriving Show
 
 data Chatroom = Chatroom { roomName :: String
                          , roomId   :: Int
@@ -18,14 +25,19 @@ data Chatroom = Chatroom { roomName :: String
                          } deriving Eq
 
 --deliver message to all clients in room
-broadcast :: Chatroom -> Message Client -> IO () -- TODO take in client that sends message so that we know who sent it
-broadcast (Chatroom n rId cls) broadType = do
-  cli <- atomically (readTVar cls)--readMVar (clients room)
-  let msg = case broadType of
-        (Join c) -> joinedMessage n "5000" rId (Client.id c)
-        (Leave c) -> leftRoomMessage rId (Client.id c)
-        (Message c s) -> roomMessage rId (name c) s
+broadcast :: Chatroom -> Message -> IO () -- TODO take in client that sends message so that we know who sent it
+broadcast (Chatroom _ rId cls) (Message c s) = do
+  cli <- atomically (readTVar cls)
+  let msg = roomMsg rId (name c) s
   mapM_ (messageClient $ BS.pack msg) cli --map message client over list of clients
+
+
+notifyClient :: Chatroom -> ControlMsg -> IO ()
+notifyClient (Chatroom n rId _) ctrl = do
+  let msg = case ctrl of
+        (Join c) -> joinedMsg n "5000" rId (Client.id c)
+        (Leave c) -> leaveMsg rId (Client.id c)
+  messageClient (BS.pack msg) (getCl ctrl)
 
 --add a client to the chatroom
 addClient :: Chatroom -> Client -> STM ()
@@ -54,12 +66,12 @@ findRoom rooms op  =  do
   rs <- atomically $ readTVar rooms
   return $ find op rs
 
--- returns true if a client is in a chatroom
-existsClient :: Chatroom -> Int -> IO Bool
-existsClient (Chatroom _ _ cls) cid = do
-  cl <- atomically $ readTVar cls
-  return $ any (\x -> Client.id x == cid) cl
+-- -- returns true if a client is in a chatroom
+-- existsClient :: Chatroom -> Int -> IO Bool
+-- existsClient (Chatroom _ _ cls) cid = do
+--   cl <- atomically $ readTVar cls
+--   return $ any (\x -> Client.id x == cid) cl
 
---check if room has any clients in it
-emptyRoom :: Chatroom -> IO Bool
-emptyRoom (Chatroom _ _ c) = fmap null (atomically $ readTVar c) --readMVar c >>= return . null
+-- --check if room has any clients in it
+-- emptyRoom :: Chatroom -> IO Bool
+-- emptyRoom (Chatroom _ _ c) = fmap null (atomically $ readTVar c) --readMVar c >>= return . null

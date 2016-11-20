@@ -26,7 +26,7 @@ joinRoom :: TVar [Cr.Chatroom] -> Cl.Client -> String -> IO ()
 joinRoom tRs client name = do
   room <- Cr.findRoom tRs (\x -> Cr.roomName x == name)
   case room of
-    (Just r) -> atomically (Cr.addClient r client) >> Cr.broadcast r (Join client)
+    (Just r) -> atomically (Cr.addClient r client) >> Cr.notifyClient r (Cr.Join client)
     Nothing -> do
       newR <- atomically $ do
         rs <- readTVar tRs
@@ -34,8 +34,8 @@ joinRoom tRs client name = do
         Cr.addClient nRoom client
         writeTVar tRs $ nRoom:rs
         return nRoom
-      Cr.broadcast newR (Join client)
-      Cr.broadcast newR (Message client (Cl.name client ++ " has joined this chatroom."))
+      Cr.notifyClient newR (Cr.Join client)
+      Cr.broadcast newR (Cr.Message client (Cl.name client ++ " has joined this chatroom."))
       print $ " joined room " ++ (Cr.roomName newR)
 
 leaveRoom :: TVar [Cr.Chatroom] -> Cl.Client -> Int -> IO()
@@ -43,14 +43,14 @@ leaveRoom tRs client rId = do
   print $ "leaving room" ++ (show rId)
   maybRoom <- Cr.findRoom tRs (\x -> Cr.roomId x == rId)
   case maybRoom of
-    (Just r) -> Cr.broadcast r (Leave client) >> Cr.removeClient r client
+    (Just r) -> Cr.notifyClient r (Cr.Leave client)
     Nothing  -> return ()
 
 messageRoom :: TVar [Cr.Chatroom] -> Cl.Client -> Int -> String -> IO()
 messageRoom tRs client rId msg = do
   maybRoom <- Cr.findRoom tRs (\x -> Cr.roomId x == rId)
   case maybRoom of
-    (Just r) -> Cr.broadcast r (Message client msg)
+    (Just r) -> Cr.broadcast r (Cr.Message client msg)
     Nothing -> return ()
 
 action ::(TVar [Cr.Chatroom],MVar ()) -> Cl.Client -> String -> String -> IO ()

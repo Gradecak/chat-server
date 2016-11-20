@@ -1,15 +1,17 @@
-module Utils (Message(..), updateMutex, parseJoinStr,
-              parseLeaveStr, joinedMessage, parseMsgStr,
-              roomMessage, leftRoomMessage
+module Utils (Message(..), ControlMsg(..), updateMutex, parseJoinStr,
+              parseLeaveStr, joinedMsg, parseMsgStr,
+              roomMsg, leaveMsg
              ) where
 
 import Control.Concurrent (MVar, takeMVar, putMVar)
 import Data.List.Split (splitOn)
 
-data Message a = Join a
-               | Leave a
-               | Message a String
+data Message a = Message a String
                deriving Show
+
+data ControlMsg a = Join  {getCl :: a}
+                  | Leave {getCl :: a}
+                  deriving Show
 
 --HOF for updating the contents of a mutex atomically
 updateMutex :: MVar a -> (a -> a) -> IO ()
@@ -29,18 +31,18 @@ parseLeaveStr :: String -> String -- returns the name of the room to leave
 parseLeaveStr str = head x
   where x = map (last . words) $ lines str
 
-joinedMessage :: String -> String ->  Int -> Int -> String
-joinedMessage rName port rId cId    = "JOINED_CHATROOM:" ++rName
+joinedMsg :: String -> String ->  Int -> Int -> String
+joinedMsg rName port rId cId    = "JOINED_CHATROOM:" ++rName
                                    ++ "\nSERVER_IP:10.62.0.104"
                                    ++ "\nPORT:" ++ port
                                    ++ "\nROOM_REF:" ++show rId
                                    ++ "\nJOIN_ID:" ++ show cId ++ "\n"
 
-roomMessage :: Int -> String -> String -> String
-roomMessage rId cName msg    = "CHAT:" ++ show rId
+roomMsg :: Int -> String -> String -> String
+roomMsg rId cName msg    = "CHAT:" ++ show rId
                             ++ "\nCLIENT_NAME:" ++ cName
                             ++ "\nMESSAGE:" ++ msg ++ "\n\n"
 
-leftRoomMessage :: Int -> Int -> String
-leftRoomMessage rId cId   = "LEFT_CHATROOM:"++ show rId
+leaveMsg :: Int -> Int -> String
+leaveMsg rId cId   = "LEFT_CHATROOM:"++ show rId
                           ++"\nJOIN_ID:"++ show cId ++ "\n"

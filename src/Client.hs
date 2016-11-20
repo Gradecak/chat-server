@@ -3,11 +3,12 @@ module Client ( Client(..),
               )where
 
 import           Control.Concurrent.MVar   (MVar)
-import           Control.Monad             (void)
+import           Control.Monad             (void) 
+
 import           Data.ByteString
 import           Network.Socket
 import           Network.Socket.ByteString as NB (send)
-import           Utils                     (updateMutex, Message(..))
+import           Utils                     (updateMutex, Message(..), joinedMsg, leaveMsg)
 
 data Client = Client { name :: String
                      , id   :: Int
