@@ -1,5 +1,5 @@
 module Utils (updateMutex, parseJoinStr,
-              parseLeaveStr, joinedMsg, parseMsgStr,
+              parseLeaveStr, joinedMsg, parseMsgStr, parseDisconnect,
               roomMsg, leaveMsg
              ) where
 
@@ -17,6 +17,9 @@ parseJoinStr str = (head x, last x)
   where x = map (last . splitOn ":") $ lines str
 
 parseLeaveStr = parseJoinStr -- returns (Room ref, Client name)
+
+parseDisconnect :: String -> String
+parseDisconnect str = last $ splitOn ":" $ last $ lines str
 
 parseMsgStr :: String -> (String, String, String)
 parseMsgStr str = (head x , x !! (2), x !! (3))

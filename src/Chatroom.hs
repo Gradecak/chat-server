@@ -1,6 +1,6 @@
 module Chatroom (Chatroom(..), Message(..), ControlMsg(..),
                  broadcast, addClient, removeClient, findRoom,
-                 newRoom, nextId, notifyClient
+                 newRoom, nextId, notifyClient, existsClient
                 )where
 
 import           Client
@@ -46,8 +46,8 @@ addClient r@(Chatroom _ _ cls) nc = do
   broadcast r (Message nc (name nc ++ " has joined this chatroom."))
 
 --remove a client by an id
-removeClient :: Chatroom -> Client -> IO ()
-removeClient r@(Chatroom _ _  cls) c = do
+removeClient :: Client -> Chatroom -> IO ()
+removeClient c r@(Chatroom _ _  cls) = do
   broadcast r (Message c (name c ++ " has left this chatroom."))
   atomically $ do
     cl <- readTVar cls
@@ -71,6 +71,8 @@ findRoom rooms op  =  do
   rs <- atomically $ readTVar rooms
   return $ find op rs
 
--- --check if room has any clients in it
--- emptyRoom :: Chatroom -> IO Bool
--- emptyRoom (Chatroom _ _ c) = fmap null (atomically $ readTVar c) --readMVar c >>= return . null
+existsClient :: Chatroom -> Client -> IO Bool
+existsClient cr cl = do
+  cls <- atomically $ readTVar $ clients cr
+  return $ any (\x -> clientId cl == clientId x) cls
+  

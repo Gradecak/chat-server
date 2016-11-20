@@ -5,7 +5,8 @@ import           Client                      as Cl
 import           Control.Concurrent          (forkFinally)
 import           Control.Concurrent.MVar     (MVar, putMVar, readMVar)
 import           Control.Concurrent.STM.TVar
-import           Control.Monad               (unless, void)
+import Control.Monad.STM
+import           Control.Monad               (unless, void, filterM)
 import qualified Data.ByteString             as B
 import           Data.ByteString.Char8       (pack, unpack)
 import           Data.List                   (isInfixOf)
@@ -35,7 +36,7 @@ leaveRoom :: TVar [Chatroom] -> Client -> Int -> IO()
 leaveRoom tRs client rId = do
   maybRoom <- findRoom tRs (\x -> roomId x == rId)
   case maybRoom of
-    (Just r) -> notifyClient r (Leave client) >> removeClient r client
+    (Just r) -> notifyClient r (Leave client) >> removeClient client r
     Nothing  -> return ()
 
 messageRoom :: TVar [Chatroom] -> Client -> Int -> String -> IO()
@@ -53,11 +54,18 @@ action (rooms, kill) cl msg inf  | "HELO"    `isInfixOf`   msg = void $ send (Cl
                                  | "LEAVE"   `isInfixOf`   msg = leaveAction rooms cl $ parseLeaveStr msg
                                  | "JOIN"    `isInfixOf`   msg = joinAction rooms cl $ parseJoinStr msg
                                  | "KILL_SERVICE\n"     == msg = print "shutting down server..." >> putMVar kill ()
-                                 | "DISCONNECT" `isInfixOf`msg = exitSuccess
+                                 | "DISCONNECT" `isInfixOf`msg = disconnectAction rooms cl{name=parseDisconnect msg}
                                  | otherwise                   = return () -- do nothing
 
 joinAction :: TVar [Chatroom] -> Client -> (String,String) -> IO ()
 joinAction rooms client (rName,cName) = joinRoom rooms client{name=cName} rName
+
+disconnectAction :: TVar [Chatroom] -> Client -> IO ()
+disconnectAction rooms client = do
+  rs <- atomically $ readTVar rooms
+  x <- filterM (`existsClient` client) rs
+  mapM_ (removeClient client) x
+  exitSuccess
 
 leaveAction :: TVar [Chatroom] -> Client -> (String,String) -> IO()
 leaveAction rooms client (rId, cName) = leaveRoom rooms client{name=cName} (read rId :: Int)
