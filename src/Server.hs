@@ -40,10 +40,12 @@ leaveRoom tRs client rId = do
 
 messageRoom :: TVar [Chatroom] -> Client -> Int -> String -> IO()
 messageRoom tRs client rId msg = do
+  print msg
+  print (show rId)
   maybRoom <- findRoom tRs (\x -> roomId x == rId)
   case maybRoom of
-    (Just r) -> broadcast r (Message client msg)
-    Nothing  -> return ()
+    (Just r) -> print "found room" >> broadcast r (Message client msg)
+    Nothing  -> print "rip room" >> return ()
 
 action ::(TVar [Chatroom],MVar ()) -> Client -> String -> String -> IO ()
 action (rooms, kill) cl msg inf  | "HELO"    `isInfixOf`   msg = void $ send (Cl.sock cl) (pack $ msg ++ inf)
@@ -61,7 +63,7 @@ leaveAction :: TVar [Chatroom] -> Client -> (String,String) -> IO()
 leaveAction rooms client (rId, cName) = leaveRoom rooms client{name=cName} (read rId :: Int)
 
 messageAction :: TVar [Chatroom] -> Client -> (String,String,String) -> IO ()
-messageAction rooms client (rId, msg, cName) = messageRoom rooms client{name=cName} (read rId :: Int) msg
+messageAction rooms client (rId,cName,msg) = messageRoom rooms client{name=cName} (read rId :: Int) msg
 
 clientHandler :: (TVar [Chatroom],MVar ()) -> Client -> String -> IO ()
 clientHandler mRooms c@(Client _ _ sck ) inf= do

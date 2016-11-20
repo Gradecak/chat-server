@@ -19,8 +19,8 @@ parseJoinStr str = (head x, last x)
 parseLeaveStr = parseJoinStr -- returns (Room ref, Client name)
 
 parseMsgStr :: String -> (String, String, String)
-parseMsgStr str = (head x , x !! (-2), x !! (-3))
-  where x = map (last . splitOn ":") $ lines str
+parseMsgStr str = (head x , x !! (2), x !! (3))
+  where x = map (last . splitOn ":") [p | p <- lines str, not (null p)] --, last (splitOn ":" p)]--map (last . splitOn ":") $ lines str
 
 joinedMsg :: String -> String ->  Int -> Int -> String
 joinedMsg rName port rId cId    = "JOINED_CHATROOM:" ++rName

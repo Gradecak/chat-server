@@ -26,7 +26,7 @@ main = do
   li <- newMVar (read n :: Int)
   rms <- newTVarIO []
   let inf = ("IP:10.62.0.104\nPort:"++port++"\nStudentID:13319506\n")
-      ser = Server {info=inf, sock=sok, rooms=rms, stop=kill, limit=li}
+      ser = Server {info=inf, sock=sok, roomsList=rms, stop=kill, limit=li}
   --_ <- forkIO $ runServer sock  (read n :: Int) ("IP:10.62.0.104\nPort:"++port++"\nStudentID:13319506\n") kill
   _ <- forkIO $ runServer ser
   takeMVar kill
