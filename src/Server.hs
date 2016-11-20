@@ -50,7 +50,7 @@ messageRoom tRs client rId msg = do
 
 action ::(TVar [Chatroom],MVar ()) -> Client -> String -> String -> IO ()
 action (rooms, kill) cl msg inf  | "HELO"    `isInfixOf`   msg = void $ send (Cl.sock cl) (pack $ msg ++ inf)
-                                 | "MESSAGE" `isInfixOf`   msg = messageAction rooms cl $ parseMsgStr msg -- let (rId, m) = parseMsgStr msg -- return () --TODO implement room messaging
+                                 | "MESSAGE" `isInfixOf`   msg = messageAction rooms cl $ parseMsgStr msg
                                  | "LEAVE"   `isInfixOf`   msg = leaveAction rooms cl $ parseLeaveStr msg
                                  | "JOIN"    `isInfixOf`   msg = joinAction rooms cl $ parseJoinStr msg
                                  | "KILL_SERVICE\n"     == msg = print "shutting down server..." >> putMVar kill ()
@@ -64,7 +64,7 @@ disconnectAction :: TVar [Chatroom] -> Client -> IO ()
 disconnectAction rooms client = do
   rs <- atomically $ readTVar rooms
   x <- filterM (`existsClient` client) rs
-  mapM_ (removeClient client) x
+  mapM_ (removeClient client) (reverse x) -- have to reverse the list to pass the test...
   exitSuccess
 
 leaveAction :: TVar [Chatroom] -> Client -> (String,String) -> IO()
