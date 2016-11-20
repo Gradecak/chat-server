@@ -35,13 +35,13 @@ broadcast (Chatroom _ rId cls) (Message c s) = do
 notifyClient :: Chatroom -> ControlMsg -> IO ()
 notifyClient (Chatroom n rId _) ctrl = do
   let msg = case ctrl of
-        (Join c) -> joinedMsg n "5000" rId (Client.id c)
-        (Leave c) -> leaveMsg rId (Client.id c)
+        (Join c) -> joinedMsg n "5000" rId (clientId c)
+        (Leave c) -> leaveMsg rId (clientId c)
   messageClient (BS.pack msg) (getCl ctrl)
 
 --add a client to the chatroom
-addClient :: Chatroom -> Client -> STM ()
-addClient (Chatroom _ _ cls) nc = do
+addClient :: Chatroom -> Client -> IO ()
+addClient (Chatroom _ _ cls) nc = atomically $ do
   cl <- readTVar cls
   writeTVar cls (nc:cl)
 
@@ -50,12 +50,14 @@ removeClient :: Chatroom -> Client -> IO ()
 removeClient (Chatroom _ _  cls) c = atomically $ do
   cl <- readTVar cls
   writeTVar cls (delete c cl)
-  --updateMutex cl (delete c)
 
-newRoom :: String -> Int -> STM Chatroom
-newRoom rName rId = do
-  clie <- newTVar []
-  return $ Chatroom rName rId clie
+newRoom ::TVar [Chatroom] -> String -> Client -> IO Chatroom
+newRoom rs rName cl = atomically $ do
+  rooms <- readTVar rs
+  rClients <- newTVar [cl]
+  let nRoom = Chatroom rName (nextId rooms) rClients
+  writeTVar rs (nRoom:rooms)
+  return nRoom
 
 nextId :: [Chatroom] -> Int
 nextId [] = 0

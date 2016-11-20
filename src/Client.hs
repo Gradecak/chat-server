@@ -8,10 +8,10 @@ import           Control.Monad             (void)
 import           Data.ByteString
 import           Network.Socket
 import           Network.Socket.ByteString as NB (send)
-import           Utils                     (updateMutex, Message(..), joinedMsg, leaveMsg)
+import           Utils                     (updateMutex, joinedMsg, leaveMsg)
 
 data Client = Client { name :: String
-                     , id   :: Int
+                     , clientId   :: Int
                      , sock :: Socket
                      } deriving (Eq, Show)
 
